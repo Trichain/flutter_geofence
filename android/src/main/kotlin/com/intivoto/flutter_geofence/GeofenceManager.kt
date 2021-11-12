@@ -9,7 +9,7 @@ import android.renderscript.RenderScript
 import android.util.Log
 import com.google.android.gms.location.*
 import com.google.android.gms.location.Geofence.*
-import com.google.android.gms.location.LocationRequest.PRIORITY_LOW_POWER
+import com.google.android.gms.location.LocationRequest.PRIORITY_HIGH_ACCURACY
 
 
 enum class GeoEvent {
@@ -18,11 +18,11 @@ enum class GeoEvent {
 }
 
 data class GeoRegion(
-        val id: String,
-        val radius: Float,
-        val latitude: Double,
-        val longitude: Double,
-        val events: List<GeoEvent>
+    val id: String,
+    val radius: Float,
+    val latitude: Double,
+    val longitude: Double,
+    val events: List<GeoEvent>
 )
 
 fun GeoRegion.serialized(): Map<*, *> {
@@ -42,21 +42,21 @@ fun GeoRegion.convertRegionToGeofence(): Geofence {
     }
 
     return Geofence.Builder()
-            .setRequestId(id)
-            .setCircularRegion(
-                    latitude,
-                    longitude,
-                    radius
-            )
-            .setExpirationDuration(NEVER_EXPIRE)
-            .setTransitionTypes(transitionType)
-            .build()
+        .setRequestId(id)
+        .setCircularRegion(
+            latitude,
+            longitude,
+            radius
+        )
+        .setExpirationDuration(NEVER_EXPIRE)
+        .setTransitionTypes(transitionType)
+        .build()
 }
 
 class GeofenceManager(context: Context,
                       callback: (GeoRegion) -> Unit,
                       val locationUpdate: (Location) -> Unit, val backgroundUpdate: (Location) -> Unit) {
-
+    private val TAG = "GeofenceManager"
     private val geofencingClient: GeofencingClient = LocationServices.getGeofencingClient(context)
     private val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
 
@@ -71,14 +71,15 @@ class GeofenceManager(context: Context,
 
 
     fun startMonitoring(geoRegion: GeoRegion) {
+        android.util.Log.e(TAG, "startMonitoring: " )
         geofencingClient.addGeofences(getGeofencingRequest(geoRegion.convertRegionToGeofence()), geofencePendingIntent)?.run {
             addOnSuccessListener {
                 // Geofences added
-                Log.d("DC", "added them")
+                Log.d(TAG, "added them")
             }
             addOnFailureListener {
                 // Failed to add geofences
-                Log.d("DC", "something not ok")
+                Log.d(TAG, "something not ok")
             }
         }
     }
@@ -119,6 +120,7 @@ class GeofenceManager(context: Context,
     }
 
     fun getUserLocation() {
+        android.util.Log.e(TAG, "getUserLocation: " )
         fusedLocationClient.apply {
             lastLocation.addOnCompleteListener {
                 it.result?.let {
@@ -134,13 +136,16 @@ class GeofenceManager(context: Context,
 
     private val backgroundLocationCallback = object : LocationCallback() {
         override fun onLocationResult(locationResult: LocationResult?) {
+            android.util.Log.e(TAG, "onLocationResult: "+locationResult.toString() )
+
             locationResult ?: return
             backgroundUpdate(locationResult.lastLocation)
         }
     }
 
     fun startListeningForLocationChanges() {
-        val request = LocationRequest().setInterval(900000L).setFastestInterval(900000L).setPriority(PRIORITY_LOW_POWER)
+        android.util.Log.e(TAG, "startListeningForLocationChanges: " )
+        val request = LocationRequest().setInterval(5000L).setFastestInterval(5000L).setPriority(PRIORITY_HIGH_ACCURACY)
         fusedLocationClient.requestLocationUpdates(request, backgroundLocationCallback, Looper.getMainLooper())
     }
 
